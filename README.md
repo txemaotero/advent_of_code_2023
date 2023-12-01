@@ -10,3 +10,4 @@ Input: each line is a string with at least 2 digits.
 
 - Part 1: For each line create a number with the first and last digit and sum
   the numbers for all the lines.
+- Part 2: The numbers in the lines might be spelled.
