@@ -11,8 +11,8 @@ int main() {
         return 1;
     }
 
-    for (const auto& line : std::ranges::istream_view<std::string>(file)) {
-        // Do something with line
+    std::string line;
+    while (std::getline(file, line)) {
         std::cout << line << '\n';
     }
 
