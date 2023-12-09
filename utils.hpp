@@ -13,11 +13,26 @@ std::vector<std::string> split(std::string s, const std::string& delimiter)
     while ((pos = s.find(delimiter)) != std::string::npos)
     {
         token = s.substr(0, pos);
-        if (!token.empty())
+        tokens.push_back(token);
+        s.erase(0, pos + delimiter.length());
+    }
+    tokens.push_back(s);
+    return tokens;
+}
+
+std::vector<std::string> split(std::string s)
+{
+    std::vector<std::string> tokens;
+    std::string token;
+    size_t pos = 0;
+    while ((pos = s.find(" ")) != std::string::npos)
+    {
+        token = s.substr(0, pos);
+        if (token != "")
         {
             tokens.push_back(token);
         }
-        s.erase(0, pos + delimiter.length());
+        s.erase(0, pos + 1);
     }
     tokens.push_back(s);
     return tokens;
