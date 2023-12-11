@@ -3,6 +3,8 @@
  */
 
 #include <string>
+#include <iostream>
+#include <ranges>
 #include <vector>
 
 std::vector<std::string> split(std::string s, const std::string& delimiter)
@@ -47,4 +49,19 @@ std::string strip(std::string s)
         return !std::isspace(ch);
     }).base(), s.end());
     return s;
+}
+
+
+template<std::ranges::range Container>
+void print(const Container& container) {
+    std::cout << '[';
+    auto it = container.begin();
+    if (it != container.end()) {
+        std::cout << *it;
+        ++it;
+    }
+    for (; it != container.end(); ++it) {
+        std::cout << ", " << *it;
+    }
+    std::cout << ']' << std::endl;
 }
