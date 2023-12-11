@@ -14,45 +14,50 @@ Input: each line is a string with at least 2 digits.
 
 ## Day 2
 
-Input:
+Input: A list of games were balls of three colors were picked from a bag.
 
-- Part 1:
-- Part 2:
+- Part 1: Sum the ids of the games that are possible with a given maximum value
+  of balls of each color.
+- Part 2: Find the sum of the products of the minimum balls required by each
+  game to be possible.
 
 ## Day 3
 
-Input:
+Input: An array of numbers, symbols and dots.
 
-- Part 1:
-- Part 2:
+- Part 1: Sum all the numbers next to a symbol.
+- Part 2: Sum the product of pairs of numbers that are connected through a "*".
 
 ## Day 4
 
-Input:
+Input: Cards with lottery winning numbers and the list of numbers you play.
 
-- Part 1:
-- Part 2:
+- Part 1: Sum the points given by all the cards.
+- Part 2: New rule to force picking card copies. Find the total number of cards
+  you end up with.
 
 ## Day 5
 
-Input:
+Input: A list of seeds and dictionaries to convert seeds into other categories.
 
-- Part 1:
-- Part 2:
+- Part 1: Find the lowest location (last kind of the conversion chain).
+- Part 2: The list of seeds were pairs of values and range (more seed ids to
+  evaluate).
 
 ## Day 6
 
-Input:
+Input: Pairs of values for times and distance.
 
-- Part 1:
-- Part 2:
+- Part 1: Calculate the games you can play to beat the record of the given
+  distance in the given time.
+- Part 2: The vales were only a single long value.
 
 ## Day 7
 
-Input:
+Input: Hands of cards with an associated number.
 
-- Part 1:
-- Part 2:
+- Part 1: Sort the hands with some rules.
+- Part 2: Rules modification to allow Jokers.
 
 ## Day 8
 
