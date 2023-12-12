@@ -1,11 +1,15 @@
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <fstream>
+#include <numeric>
 #include <string>
 #include <ranges>
 #include <iostream>
 #include <unordered_map>
 #include "../utils.hpp"
+
+using ulong = unsigned long long int;
 
 
 class GameNode
@@ -59,9 +63,50 @@ private:
 };
 
 
+struct CycleNode
+{
+    std::string code;
+    int instructionIndex;
+    ulong steps;
+
+    bool operator==(const CycleNode& other) const {
+        return code == other.code && instructionIndex == other.instructionIndex;
+    }
+};
+
+std::vector<CycleNode> findCycles(const GameNode* startNode, const std::unordered_map<std::string, GameNode>& nodes, const std::string& instructions)
+{
+    std::vector<CycleNode> foundCycleNodes;
+    ulong steps = 0;
+    const int nInstructions = instructions.size();
+    int i = 0;
+    std::string currentNode = startNode->getCode();
+    while (true)
+    {
+        if (currentNode[2] == 'Z')
+        {
+            CycleNode cycleNode {currentNode, i, steps};
+            bool visited = std::find(foundCycleNodes.begin(), foundCycleNodes.end(), cycleNode) != foundCycleNodes.end();
+            foundCycleNodes.push_back(cycleNode);
+            if (visited)
+            {
+                return foundCycleNodes;
+            }
+        }
+        char direction = instructions[i];
+        currentNode = nodes.at(currentNode).getConnected(direction)->getCode();
+        steps++;
+        i++;
+        if (i >= nInstructions)
+            i = 0;
+    }
+}
+
+ulong lcm(ulong a, ulong b) { return (a / std::gcd(a, b)) * b; }
+
+
 int main() {
     std::ifstream file("input.txt");
-    // std::ifstream file("example.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
@@ -117,26 +162,16 @@ int main() {
     // Part 2
     steps = 0;
     i = 0;
-    std::vector<std::string> currentNodes;
+    ulong minimumSteps = 1;
     for (const auto& [_, node] : nodes) {
         if (node.getCode()[2] == 'A')
-            currentNodes.push_back(node.getCode());
+        {
+            auto cycle = findCycles(&node, nodes, instructions);
+            assert(cycle[1].steps == cycle[0].steps*2);
+            minimumSteps = lcm(minimumSteps, cycle[0].steps);
+        }
     }
 
-    // TODO: Develop more efficient solution storing the cycles each node has.
-    while (true)
-    {
-        if (std::all_of(currentNodes.begin(), currentNodes.end(), [](const std::string& s) { return s[2] == 'Z'; }))
-            break;
-        char direction = instructions[i];
-        for (auto& node : currentNodes) {
-            node = nodes[node].getConnected(direction)->getCode();
-        }
-        steps++;
-        i++;
-        if (i >= nInstructions)
-            i = 0;
-    }
-    std::cout << "Part 2: " << steps << '\n';
+    std::cout << "Part 2: " << minimumSteps << '\n';
     return 0;
 }
