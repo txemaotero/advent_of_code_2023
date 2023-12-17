@@ -86,10 +86,12 @@ Input: An array with connected pipes.
 
 ## Day 11
 
-Input:
+Input: Array with sparse galaxies
 
-- Part 1:
-- Part 2:
+- Part 1: Find the sum of shortest distance between pairs adding a row and col
+  in places without galaxies.
+- Part 2: The same but replacing empty rows/cols with a million empty rows and
+  cols
 
 ## Day 12
 
