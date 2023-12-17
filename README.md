@@ -61,17 +61,21 @@ Input: Hands of cards with an associated number.
 
 ## Day 8
 
-Input:
+Input: First line is a series of left and right instructions, the rest are the
+instructions to build a double linked list.
 
-- Part 1:
-- Part 2:
+- Part 1: Number of instructions to run until the end of the list is reached
+  (ZZZ)
+- Part 2: Number of instructions to run until all the posible starts (end with
+  A) reach the and at the same time (node ending in Z).
 
 ## Day 9
 
-Input:
+Input: Sequence of numbers in each line. Calculate a Pascal triangle
+subtracting.
 
-- Part 1:
-- Part 2:
+- Part 1: Estimate the next value of each series and add all.
+- Part 2: Estimate the previous value of each series and add all.
 
 ## Day 10
 
