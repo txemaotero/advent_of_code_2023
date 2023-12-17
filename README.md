@@ -95,9 +95,11 @@ Input: Array with sparse galaxies
 
 ## Day 12
 
-Input:
+Input: Each line is a combination of characters indicating working as break
+pieces. The ? means unknown. At the end of the line there is a sequence of known
+contiguous working pieces.
 
-- Part 1:
+- Part 1: How many compatible configurations are in total.
 - Part 2:
 
 ## Day 13
