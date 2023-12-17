@@ -79,10 +79,10 @@ subtracting.
 
 ## Day 10
 
-Input:
+Input: An array with connected pipes.
 
-- Part 1:
-- Part 2:
+- Part 1: Distance to the furthest point.
+- Part 2: Area enclosed.
 
 ## Day 11
 
