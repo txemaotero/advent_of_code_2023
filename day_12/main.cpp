@@ -1,125 +1,140 @@
-#include <algorithm>
-#include <cassert>
 #include <fstream>
-#include <numeric>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <iostream>
 #include "../utils.hpp"
 
 
+struct pair_hash {
+    std::size_t operator () (const std::pair<size_t, size_t> &p) const {
+        return p.first << 32 | p.second;
+    }
+};
 
-void evalOneMoreChar(std::string sequence, size_t position, size_t consecutives,
-        size_t currentTargetPos, size_t missingInterr,
-        size_t passedOks,
-        size_t missingOks, size_t totalOk,
-        const std::vector<size_t>& target, int& totalValids)
+using Cache = std::unordered_map<std::pair<size_t, size_t>, uint64, pair_hash>;
+
+
+bool moveHashForward(const std::string& sequence, size_t& position, size_t nHashes)
 {
-    // std::cout << "Called with " << sequence << " " << position << " " << consecutives << " " << currentTargetPos << std::endl;
+    while (nHashes > 0 && position < sequence.size())
+    {
+        if (sequence[position] == '.')
+        {
+            return false;
+        }
+        position++;
+        nHashes--;
+    }
+    if (nHashes == 0 && position < sequence.size())
+        return sequence[position] != '#';
+    return nHashes == 0;
+};
+
+
+uint64 evalOneMoreChar(
+        const std::string& sequence,
+        size_t position,
+        const std::vector<size_t>& target,
+        size_t currentTargetPos,
+        Cache& cache)
+{
+    auto key = std::make_pair(position, currentTargetPos);
+    if (cache.contains(key))
+        return cache[key];
+
+    while (position < sequence.size() && sequence[position] != '?')
+    {
+        if (sequence[position] == '.')
+        {
+            position++;
+        }
+        else
+        {
+            if (!moveHashForward(sequence, position, target[currentTargetPos]))
+            {
+                cache[key] = 0;
+                return 0;
+            }
+            currentTargetPos++;
+            if (position < sequence.size() && sequence[position] == '?')
+                position++;
+        }
+    }
     if (position == sequence.size())
     {
-        if ((consecutives > 0 && target[currentTargetPos] == consecutives && currentTargetPos == target.size() - 1) || currentTargetPos == target.size())
+        uint64 result;
+        if (currentTargetPos == target.size())
         {
-            // std::cout << sequence << std::endl;
-            totalValids++;
+            result = 1;
         }
-        return;
+        else
+        {
+            result = 0;
+        }
+        cache[key] = result;
+        return result;
     }
     if (sequence[position] == '?')
     {
-        missingInterr--;
-        sequence[position] = '.';
-        evalOneMoreChar(sequence, position, consecutives, currentTargetPos, passedOks, missingOks, totalOk, missingInterr, target, totalValids);
-        sequence[position] = '#';
-        evalOneMoreChar(sequence, position, consecutives, currentTargetPos, passedOks, missingOks, totalOk, missingInterr, target, totalValids);
-    }
-    else if (sequence[position] == '.')
-    {
-        if (consecutives > 0)
+        uint64 branchDot = evalOneMoreChar(sequence, 1+position, target, currentTargetPos, cache);
+        if (!moveHashForward(sequence, position, target[currentTargetPos]))
         {
-            if (target[currentTargetPos] != consecutives)
-                return;
-            currentTargetPos++;
+            cache[key] = branchDot;
+            return branchDot;
         }
-        consecutives = 0;
-        evalOneMoreChar(sequence, ++position, consecutives, currentTargetPos, passedOks, missingOks, totalOk, missingInterr, target, totalValids);
+        currentTargetPos++;
+        if (sequence[position] == '?')
+            position++;
+        uint64 branchHash = evalOneMoreChar(sequence, position, target, currentTargetPos, cache);
+        cache[key] = branchDot + branchHash;
+        return branchDot + branchHash;
     }
-    else if (sequence[position] == '#')
-    {
-        if (currentTargetPos == target.size() || consecutives == target[currentTargetPos])
-        {
-            return;
-        }
-        passedOks++;
-        missingOks--;
-        if (passedOks > totalOk || passedOks + missingOks + missingInterr < totalOk)
-        {
-            return;
-        }
-        consecutives++;
-        evalOneMoreChar(sequence, ++position, consecutives, currentTargetPos, passedOks, missingOks, totalOk, missingInterr, target, totalValids);
-    }
-    else
-    {
-        assert(false);
-    }
-
+    cache[key] = 0;
+    return 0;
 }
 
-std::string modifySequencePart2(const std::string& sequence)
+
+std::pair<std::string, std::vector<size_t>> modifyInputPart2(const std::string& sequence, const std::vector<size_t>& target)
 {
     std::string newSequence = sequence;
+    std::vector<size_t> newTarget = target;
     for (int i = 0; i < 4; i++)
     {
         newSequence += '?';
         newSequence += sequence;
-    }
-    return newSequence;
-}
-
-std::vector<size_t> modifyTargetPart2(const std::vector<size_t>& target)
-{
-    std::vector<size_t> newTarget = target;
-    for (int i = 0; i < 4; i++)
-    {
         newTarget.insert(newTarget.end(), target.begin(), target.end());
     }
-    return newTarget;
+    return std::make_pair(newSequence, newTarget);
 }
 
+
 int main() {
-    // std::ifstream file("input.txt");
-    std::ifstream file("example.txt");
+    std::ifstream file("input.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
     }
 
-    int part1 = 0;
-    unsigned long long int part2 = 0;
+    uint64 part1 = 0;
+    uint64 part2 = 0;
     std::string line;
+    Cache cache;
     while (std::getline(file, line)) {
-        int valids = 0;
         std::vector<std::string> lineSpl = split(line);
         std::string sequence = lineSpl[0];
-        size_t missingInterr = std::count(sequence.begin(), sequence.end(), '?');
-        size_t missingOks = std::count(sequence.begin(), sequence.end(), '#');
         auto valuesStrs = split(lineSpl[1], ",");
         std::vector<size_t> target;
         for (const auto& valStr : valuesStrs)
         {
             target.push_back(std::stoi(valStr));
         }
-        size_t totalValids = std::accumulate(target.begin(), target.end(), 0);
-        evalOneMoreChar(sequence, 0, 0, 0, missingInterr, 0, missingOks, totalValids, target, valids);
-        part1 += valids;
+        cache.clear();
+        part1 += evalOneMoreChar(sequence, 0, target, 0, cache);
 
-        auto sequence2 = modifySequencePart2(sequence);
-        auto target2 = modifyTargetPart2(target);
-        valids = 0;
-        evalOneMoreChar(sequence2, 0, 0, 0, missingInterr, 0, missingOks, totalValids, target2, valids);
-        part2 += valids;
-        std::cout << "Line" << std::endl;
+        auto [sequence2, target2] = modifyInputPart2(sequence, target);
+        cache.clear();
+        part2 += evalOneMoreChar(sequence2, 0, target2, 0, cache);
     }
 
     std::cout << "Part 1: " << part1 << std::endl;

@@ -7,6 +7,14 @@
 #include <ranges>
 #include <vector>
 
+
+using uint32 = unsigned int;
+using uint64 = unsigned long long int;
+using int32 = int;
+using int64 = long long int;
+
+
+
 std::vector<std::string> split(std::string s, const std::string& delimiter)
 {
     std::vector<std::string> tokens;
