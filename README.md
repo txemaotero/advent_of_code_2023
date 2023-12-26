@@ -91,37 +91,37 @@ Input: Array with sparse galaxies
 - Part 1: Find the sum of shortest distance between pairs adding a row and col
   in places without galaxies.
 - Part 2: The same but replacing empty rows/cols with a million empty rows and
-  cols
+  cols.
 
 ## Day 12
 
-Input: Each line is a combination of characters indicating working as break
+Input: Each line is a combination of characters indicating working or break
 pieces. The ? means unknown. At the end of the line there is a sequence of known
 contiguous working pieces.
 
 - Part 1: How many compatible configurations are in total.
-- Part 2:
+- Part 2: Concatenate 5 times the input sequence and recalculate.
 
 ## Day 13
 
-Input:
+Input: Blocks of arrays with # or .
 
-- Part 1:
-- Part 2:
+- Part 1: Find the columns or rows that mirrors the array.
+- Part 2: Find the pixel that is wrong so the mirror lines change.
 
 ## Day 14
 
-Input:
+Input: A maze with round rocks and walls
 
-- Part 1:
-- Part 2:
+- Part 1: Tilt the maze to the north and calculate the total charge.
+- Part 2: Apply 1000000000 tilt cycles and calculate the total charge.
 
 ## Day 15
 
-Input:
+Input: A sequence of commands
 
-- Part 1:
-- Part 2:
+- Part 1: Implement a hashing algorithm.
+- Part 2: Put lenses in boxes using the hashing algorithm.
 
 ## Day 16
 
