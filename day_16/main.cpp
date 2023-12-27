@@ -72,7 +72,11 @@ public:
     }
 
     void addBeam(const Beam& beam) {
-        beams.push_back(beam);
+        Beam new_beam = beam;
+        bool hasToBeRemoved = processBeam(new_beam, beams);
+        if (!hasToBeRemoved) {
+            beams.push_back(new_beam);
+        }
     }
 
     void moveBeamsOneStep() {
@@ -107,6 +111,15 @@ public:
     void simulateBeams() {
         while (!beams.empty()) {
             moveBeamsOneStep();
+        }
+    }
+
+    void clear() {
+        beams.clear();
+        for (auto& row : beam_presence) {
+            for (auto& tile : row) {
+                tile.clear();
+            }
         }
     }
 
@@ -258,20 +271,9 @@ private:
     }
 };
 
-std::ostream& operator<<(std::ostream& os, const Maze& maze) {
-    for (const auto& row : maze.getMaze()) {
-        for (const auto& c : row) {
-            os << c;
-        }
-        os << '\n';
-    }
-    return os;
-}
-
 
 int main() {
     std::ifstream file("input.txt");
-    // std::ifstream file("example.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
@@ -282,12 +284,33 @@ int main() {
     while (std::getline(file, line)) {
         maze.addRow(line);
     }
-    std::cout << maze << '\n';
-    maze.addBeam({{0, 0}, toDir(Direction::DOWN)}); // The first tile is \ so it is reflected down
+    maze.addBeam({{0, 0}, toDir(Direction::RIGHT)});
     maze.simulateBeams();
-    maze.printState();
-
     std::println("Part 1: {}", maze.getEnergizedTiles());
+
+    maze.clear();
+    uint32 part2 = 0;
+    for (int i = 0; i < Maze::N_ROWS; ++i) {
+        maze.addBeam({{i, 0}, toDir(Direction::RIGHT)});
+        maze.simulateBeams();
+        part2 = std::max(part2, maze.getEnergizedTiles());
+        maze.clear();
+        maze.addBeam({{i, Maze::N_ROWS - 1}, toDir(Direction::LEFT)});
+        maze.simulateBeams();
+        part2 = std::max(part2, maze.getEnergizedTiles());
+        maze.clear();
+    }
+    for (int i = 0; i < Maze::N_COLS; ++i) {
+        maze.addBeam({{0, i}, toDir(Direction::DOWN)});
+        maze.simulateBeams();
+        part2 = std::max(part2, maze.getEnergizedTiles());
+        maze.clear();
+        maze.addBeam({{Maze::N_COLS - 1, i}, toDir(Direction::UP)});
+        maze.simulateBeams();
+        part2 = std::max(part2, maze.getEnergizedTiles());
+        maze.clear();
+    }
+    std::println("Part 2: {}", part2);
     return 0;
 }
 
