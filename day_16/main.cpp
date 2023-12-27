@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <fstream>
-#include <ranges>
+#include <print>
+#include <format>
+#include <ostream>
 #include <string>
 #include <iostream>
 #include "../utils.hpp"
@@ -31,13 +33,13 @@ Direction getDirection(const std::array<int, 2>& dir) {
 std::array<int, 2> toDir(const Direction& dir) {
     switch (dir) {
         case Direction::UP:
-            return {0, -1};
-        case Direction::DOWN:
-            return {0, 1};
-        case Direction::LEFT:
             return {-1, 0};
-        case Direction::RIGHT:
+        case Direction::DOWN:
             return {1, 0};
+        case Direction::LEFT:
+            return {0, -1};
+        case Direction::RIGHT:
+            return {0, 1};
     }
 }
 
@@ -45,8 +47,12 @@ std::array<int, 2> toDir(const Direction& dir) {
 struct Beam
 
 {
-    std::array<size_t, 2> pos;
+    std::array<int, 2> pos;
     std::array<int, 2> dir;
+
+    std::string toString() const {
+        return std::format("Beam(pos: ({}, {}), dir: ({}, {}))", pos[0], pos[1], dir[0], dir[1]);
+    }
 };
 
 
@@ -54,12 +60,15 @@ class Maze
 {
 public:
     static constexpr uint32 N_ROWS = 110;
-    static constexpr uint32 N_COLS = 136;
+    static constexpr uint32 N_COLS = 110;
+    // static constexpr uint32 N_ROWS = 10;
+    // static constexpr uint32 N_COLS = 10;
 
     void addRow(const std::string& row) {
         for (uint32 col_idx = 0; col_idx < N_COLS; ++col_idx) {
             maze[row_idx][col_idx] = row[col_idx];
         }
+        ++row_idx;
     }
 
     void addBeam(const Beam& beam) {
@@ -70,23 +79,66 @@ public:
         std::vector<uint32> beams_to_remove;
         std::vector<Beam> new_beams;
         for (uint32 i = 0; auto& beam : beams) {
-            addBeamPresence(beam);
+            if (addBeamPresence(beam))
+            {
+                beams_to_remove.push_back(i);
+                continue;
+            }
             beam.pos[0] += beam.dir[0];
             beam.pos[1] += beam.dir[1];
-            if (!contains(beam.pos))
-                beams_to_remove.push_back(i);
-            else
+            if (!insideMaze(beam.pos))
             {
-                bool remove = processBeam(beam, new_beams);
-                if (remove)
-                    beams_to_remove.push_back(i);
+                beams_to_remove.push_back(i);
+            }
+            else if (processBeam(beam, new_beams))
+            {
+                beams_to_remove.push_back(i);
             }
             ++i;
         }
+        for (auto i : std::views::reverse(beams_to_remove)) {
+            beams.erase(beams.begin() + i);
+        }
+        for (auto& beam : new_beams) {
+            beams.push_back(beam);
+        }
     }
 
-    bool contains(const std::array<size_t, 2>& pos) const {
-        return pos[0] < N_ROWS && pos[1] < N_COLS;
+    void simulateBeams() {
+        while (!beams.empty()) {
+            moveBeamsOneStep();
+        }
+    }
+
+    bool insideMaze(const std::array<int, 2>& pos) const {
+        return pos[0] < N_ROWS && pos[1] < N_COLS && pos[0] >= 0 && pos[1] >= 0;
+    }
+
+    uint32 getEnergizedTiles() const {
+        uint32 count = 0;
+        for (uint32 row_idx = 0; row_idx < N_ROWS; ++row_idx) {
+            for (uint32 col_idx = 0; col_idx < N_COLS; ++col_idx) {
+                if (beam_presence[row_idx][col_idx].size() > 0)
+                    ++count;
+            }
+        }
+        return count;
+    }
+
+    const auto& getMaze() const {
+        return maze;
+    }
+
+    void printState() const {
+        for (uint32 row_idx = 0; row_idx < N_ROWS; ++row_idx) {
+            for (uint32 col_idx = 0; col_idx < N_COLS; ++col_idx) {
+                if (beam_presence[row_idx][col_idx].size() > 0)
+                    std::print("#");
+                else
+                    std::print(".");
+            }
+            std::println("");
+        }
     }
 
 private:
@@ -95,61 +147,131 @@ private:
     std::vector<Beam> beams;
     uint32 row_idx = 0;
 
-    void addBeamPresence(const Beam& beam) {
+    /**
+     * @brief Returns true if the beam was already processed
+     */
+    bool addBeamPresence(const Beam& beam) {
         if (!std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir)) {
             beam_presence[beam.pos[0]][beam.pos[1]].push_back(beam.dir);
+            return false;
         }
+        return true;
     }
 
+    /**
+     * @brief Returns true if the resulting beam must be removed
+     */
     bool processBeam(Beam& beam, std::vector<Beam>& new_beams) {
         Direction dir = getDirection(beam.dir);
         char c = maze[beam.pos[0]][beam.pos[1]];
         switch (c) {
-            case '.': 
+            case '.':
             {
                 return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
             }
             case '/':
             {
                 switch (dir) {
-                    case Direction::UP:
+                    case Direction::UP: {
                         beam.dir = toDir(Direction::RIGHT);
-                    case Direction::DOWN:
+                        break;
+                    }
+                    case Direction::DOWN: {
                         beam.dir = toDir(Direction::LEFT);
-                    case Direction::LEFT:
+                        break;
+                    }
+                    case Direction::LEFT: {
                         beam.dir = toDir(Direction::DOWN);
-                    case Direction::RIGHT:
+                        break;
+                    }
+                    case Direction::RIGHT: {
                         beam.dir = toDir(Direction::UP);
+                        break;
+                    }
                 }
+                return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
             }
             case '\\':
             {
                 switch (dir) {
-                    case Direction::UP:
+                    case Direction::UP: {
                         beam.dir = toDir(Direction::LEFT);
-                    case Direction::DOWN:
+                        break;
+                    }
+                    case Direction::DOWN: {
                         beam.dir = toDir(Direction::RIGHT);
-                    case Direction::LEFT:
+                        break;
+                    }
+                    case Direction::LEFT: {
                         beam.dir = toDir(Direction::UP);
-                    case Direction::RIGHT:
+                        break;
+                    }
+                    case Direction::RIGHT: {
                         beam.dir = toDir(Direction::DOWN);
+                        break;
+                    }
                 }
                 return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
             }
             case '-':
             {
+                switch (dir) {
+                    case Direction::UP:
+                    case Direction::DOWN:
+                    {
+                        beam.dir = toDir(Direction::LEFT);
+                        Beam new_beam {beam.pos, toDir(Direction::RIGHT)};
+                        if (!std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], new_beam.dir)) {
+                            new_beams.push_back(new_beam);
+                        }
+                        return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
+                    }
+                    case Direction::LEFT:
+                    case Direction::RIGHT:
+                    {
+                        return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
+                    }
+                }
             }
             case '|':
             {
+                switch (dir) {
+                    case Direction::UP:
+                    case Direction::DOWN:
+                    {
+                        return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
+                    }
+                    case Direction::LEFT:
+                    case Direction::RIGHT:
+                    {
+                        beam.dir = toDir(Direction::UP);
+                        Beam new_beam {beam.pos, toDir(Direction::DOWN)};
+                        if (!std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], new_beam.dir)) {
+                            new_beams.push_back(new_beam);
+                        }
+                        return std::ranges::contains(beam_presence[beam.pos[0]][beam.pos[1]], beam.dir);
+                    }
+                }
             }
-
+        }
         return false;
     }
 };
 
+std::ostream& operator<<(std::ostream& os, const Maze& maze) {
+    for (const auto& row : maze.getMaze()) {
+        for (const auto& c : row) {
+            os << c;
+        }
+        os << '\n';
+    }
+    return os;
+}
+
 
 int main() {
     std::ifstream file("input.txt");
+    // std::ifstream file("example.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
@@ -160,6 +282,12 @@ int main() {
     while (std::getline(file, line)) {
         maze.addRow(line);
     }
+    std::cout << maze << '\n';
+    maze.addBeam({{0, 0}, toDir(Direction::DOWN)}); // The first tile is \ so it is reflected down
+    maze.simulateBeams();
+    maze.printState();
 
+    std::println("Part 1: {}", maze.getEnergizedTiles());
     return 0;
 }
+
