@@ -2,6 +2,7 @@
  * This file defines some utility functions that are useful for multiple days
  */
 
+#include <concepts>
 #include <string>
 #include <iostream>
 #include <ranges>
@@ -73,3 +74,63 @@ void print(const Container& container) {
     }
     std::cout << ']' << std::endl;
 }
+
+template<typename T, typename F>
+concept Comparator = requires(F f, const T& a, const T& b) {
+    { f(a, b) } -> std::convertible_to<bool>;
+};
+
+template<typename T, typename F = std::less<T>>
+    requires Comparator<T, F>
+class PriorityQueue {
+public:
+    PriorityQueue() = default;
+
+    void push(const T& item) {
+        auto it = std::lower_bound(data.begin(), data.end(), item, comparator);
+        data.insert(it, item);
+    }
+
+    T pop() {
+        if (data.empty()) {
+            throw std::runtime_error("PriorityQueue is empty");
+        }
+        T result = data[0];
+        data.erase(data.begin());
+        return result;
+    }
+
+    T popLast() {
+        T result = data.back();
+        data.pop_back();
+        return result;
+    }
+
+    T first() const {
+        return data[0];
+    }
+
+    T last() const {
+        return data.back();
+    }
+
+    bool empty() const {
+        return data.empty();
+    }
+
+    size_t size() const {
+        return data.size();
+    }
+
+    const std::vector<T>& getData() const {
+        return data;
+    }
+
+    std::vector<T>& getData() {
+        return data;
+    }
+
+private:
+    std::vector<T> data;
+    F comparator;
+};

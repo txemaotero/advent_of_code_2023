@@ -125,16 +125,17 @@ Input: A sequence of commands
 
 ## Day 16
 
-Input:
+Input: Light bouncing in a set of mirrors and splitters.
 
-- Part 1:
-- Part 2:
+- Part 1: Find how many tiles are illuminated when light enters from 0,0 to
+  right.
+- Part 2: Find the entering position to maximize illuminated tiles.
 
 ## Day 17
 
-Input:
+Input: Path finding.
 
-- Part 1:
+- Part 1: 
 - Part 2:
 
 ## Day 18
