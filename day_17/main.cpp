@@ -1,21 +1,10 @@
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <print>
 #include <fstream>
 #include <string>
 #include <iostream>
 #include "../utils.hpp"
-
-
-enum class Direction
-{
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-    NONE
-};
 
 
 struct Position
@@ -28,58 +17,45 @@ struct Position
     }
 };
 
-
-Direction getDirection(const Position& from, const Position& to) {
-    if (from.row == to.row) {
-        if (from.col < to.col) {
-            return Direction::RIGHT;
-        } else {
-            return Direction::LEFT;
-        }
-    } else {
-        if (from.row < to.row) {
-            return Direction::DOWN;
-        } else {
-            return Direction::UP;
-        }
-    }
+bool areAligned(const Position& a, const Position& b, const Position& c)
+{
+    if (a == b || b == c)
+        return false;
+    return (a.row == b.row && b.row == c.row) || (a.col == b.col && b.col == c.col);
 }
 
-struct Node
+
+/**
+ * @brief A situation while finding the path
+ */
+struct Situation
 {
-    Position pos;
-    uint32 g;
-    uint32 h;
-    uint32 f;
-    uint32 consecutiveStraight;
-    Direction direction;
-    std::unique_ptr<Node> parent {};
+    Position currentPos;
+    Position previousPos;
+    uint32 consecutiveStraightMoves;
+    uint32 accumulatedHeat;
+    uint32 distanceToEnd;
 
-    Node(const Position& pos, uint32 g, uint32 h, Direction direction, uint32 consecutiveStraight)
-        : pos(pos)
-        , g(g)
-        , h(h)
-        , f(g + h)
-        , direction(direction)
-        , consecutiveStraight(consecutiveStraight)
-    {}
-
-    Node(const Position& pos, uint32 g, uint32 h)
-        : pos(pos)
-        , g(g)
-        , h(h)
-        , f(g + h)
-        , direction(Direction::NONE)
-        , consecutiveStraight(0)
-    {}
-
-    bool operator<(const Node& other) const {
-        return f < other.f;
+    uint32 heuristic() const {
+        return accumulatedHeat + distanceToEnd;
     }
 
-    bool operator==(const Node& other) const {
-        return pos == other.pos && direction == other.direction && consecutiveStraight == other.consecutiveStraight;
+    bool isValidNeighbor(const Position& neighbor) const {
+        if (consecutiveStraightMoves < 3)
+            return true;
+        return !areAligned(previousPos, currentPos, neighbor);
     }
+
+    bool operator<(const Situation& other)
+    {
+        return this->heuristic() < other.heuristic();
+    }
+
+    bool isValid() const
+    {
+        return currentPos != previousPos;
+    }
+
 };
 
 
@@ -103,6 +79,10 @@ public:
 
     uint32 operator[](uint32 row, uint32 col) const {
         return grid[row][col];
+    }
+
+    uint32 operator[](const Position& pos) const {
+        return grid[pos.row][pos.col];
     }
 
 private:
@@ -135,77 +115,60 @@ uint32 manhatanDistance(const Position& a, const Position& b)
            std::abs(static_cast<int32>(a.col) - static_cast<int32>(b.col));
 }
 
-bool areAligned(const Position& a, const Position& b, const Position& c)
-{
-    return (a.row == b.row && b.row == c.row) || (a.col == b.col && b.col == c.col);
-}
-
-
 class AStar
 {
 public:
-    AStar(const PlayGround& playGround, const Position& start, const Position& end)
-        : playGround(playGround)
-        , start(start)
-        , end(end)
+    AStar(const PlayGround& playGround, const Position& start, const Position& end) :
+        playGround(playGround),
+        start(start),
+        end(end)
     {
-        auto startNode = std::make_unique<Node>(start, 0, manhatanDistance(start, end));
-        toVisit.reserve(PlayGround::ROWS * PlayGround::COLS);
-        visited.reserve(PlayGround::ROWS * PlayGround::COLS);
-        toVisit.push_back(std::move(startNode));
+        toCheck.push_back({start, start, 0, 0, manhatanDistance(start, end)});
     }
 
-    std::unique_ptr<Node> findPath() {
-        while (!toVisit.empty()) {
-            auto current = std::move(toVisit.back());
-            toVisit.pop_back();
-
-            if (current->pos == end) {
-                return current;
+    Situation findPath()
+    {
+        while (!toCheck.empty())
+        {
+            const Situation situation = toCheck.back();
+            toCheck.pop_back();
+            if (situation.currentPos == end)
+            {
+                return situation;
             }
-            auto& parent = current->parent;
-
-            for (const auto& neighbor : getNeighbors(current->pos)) {
-
-                if (parent && neighbor == parent->pos) {
-                    continue;
-                }
-
-                uint32 e = playGround[neighbor.row, neighbor.col];
-                uint32 g = current->g + playGround[neighbor.row, neighbor.col];
-                uint32 h = manhatanDistance(neighbor, end);
-                uint32 f = g + h;
-
-                auto newNode = std::make_unique<Node>(neighbor, g, h);
-
-                uint32 consecutiveStraight = 1;
-                if (parent && areAligned(parent->pos, current->pos, neighbor)) {
-                    consecutiveStraight = current->consecutiveStraight + 1;
-                }
-                newNode->consecutiveStraight = consecutiveStraight;
-                newNode->direction = getDirection(current->pos, neighbor);
-
-                if (newNode->consecutiveStraight > 3) {
-                    continue;
-                }
-                auto it = std::ranges::find(toVisit, newNode);
-                if (it != toVisit.end())
+            for (const Position& neighbor : getNeighbors(situation.currentPos))
+            {
+                if (!situation.isValidNeighbor(neighbor))
                 {
+                    continue;
+                }
+                uint32 consecutiveStraightMoves;
+                if (areAligned(situation.previousPos, situation.currentPos, neighbor))
+                {
+                    consecutiveStraightMoves = 1 + situation.consecutiveStraightMoves;
                 }
                 else
                 {
+                    consecutiveStraightMoves = 0;
                 }
+
+                Situation newSituation {neighbor, situation.currentPos, consecutiveStraightMoves,
+                    situation.accumulatedHeat + playGround[neighbor], manhatanDistance(neighbor, end)};
+                auto it = std::lower_bound(toCheck.begin(), toCheck.end(), newSituation, [](const Situation& a, const Situation& b) {
+                        return a.heuristic() < b.heuristic();
+                        });
+                toCheck.insert(it, newSituation);
             }
         }
-        return {};
+        return {start, start, 0, 0, 0};
     }
 
 private:
-    std::vector<std::unique_ptr<Node>> toVisit;
-    std::vector<std::unique_ptr<Node>> visited;
-    Position start;
-    Position end;
     const PlayGround& playGround;
+    const Position start;
+    const Position end;
+    // Best candidates at the end
+    std::vector<Situation> toCheck;
 };
 
 
@@ -222,13 +185,16 @@ int main() {
     while (std::getline(file, line)) {
         playGround.addRow(line);
     }
+    std::println("Playground loaded");
     AStar aStar(playGround, {0, 0}, {PlayGround::ROWS - 1, PlayGround::COLS - 1});
-    auto node = aStar.findPath();
-    std::cout << "Path length: " << node.g << '\n';
-    // while (node.parent != nullptr) {
-    //     std::cout << node.pos.row << ", " << node.pos.col << '\n';
-    //     node = *(node.parent);
-    // }
+    std::println("Finding the path...");
+    Situation endSituation = aStar.findPath();
+    if (!endSituation.isValid())
+    {
+        std::println("Invalid output. Path not found");
+        return 0;
+    }
+    std::println("Path found, heat accumulated = %i", endSituation.accumulatedHeat);
 
     return 0;
 }
