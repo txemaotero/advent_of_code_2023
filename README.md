@@ -135,8 +135,8 @@ Input: Light bouncing in a set of mirrors and splitters.
 
 Input: Path finding.
 
-- Part 1: 
-- Part 2:
+- Part 1: At most 3 straight moves
+- Part 2: At least 4 straight moves and at most 10 before turning.
 
 ## Day 18
 

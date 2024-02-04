@@ -44,6 +44,11 @@ struct Situation
         return this->heuristic() < other.heuristic();
     }
 
+    bool operator==(const Situation& other)
+    {
+        return currentPos == other.currentPos && previousPos == other.previousPos && consecutiveStraightMoves == other.consecutiveStraightMoves;
+    }
+
     bool isValid() const
     {
         return currentPos != previousPos;
@@ -55,8 +60,6 @@ struct Situation
 class PlayGround
 {
 public:
-    // static constexpr uint32 ROWS = 13;
-    // static constexpr uint32 COLS = 13;
     static constexpr uint32 ROWS = 141;
     static constexpr uint32 COLS = 141;
 
@@ -106,17 +109,23 @@ uint32 manhatanDistance(const Position& a, const Position& b)
            std::abs(static_cast<int32>(a.col) - static_cast<int32>(b.col));
 }
 
-bool ordered(const std::vector<Situation>& toCheck)
+class IVisitedPositionManager
 {
-    return std::is_sorted(toCheck.begin(), toCheck.end(), [](const Situation& a, const Situation& b) {
-        return a.heuristic() > b.heuristic();
-    });
-}
+public:
+    virtual void clear() = 0;
+    virtual bool checkWasVisitedAndAdd(const Situation& situation) = 0;
+    virtual ~IVisitedPositionManager() = default;
+};
 
-class VisitedPositionManager
+class VisitedPositionManager : public IVisitedPositionManager
 {
 public:
     VisitedPositionManager()
+    {
+        clear();
+    }
+
+    void clear() override
     {
         for (auto& row : grid) {
             for (auto& element : row) {
@@ -129,7 +138,7 @@ public:
         }
     }
 
-    bool checkAndAdd(const Situation& situation)
+    bool checkWasVisitedAndAdd(const Situation& situation) override
     {
         auto& element = getElement(situation);
         if (element <= situation.accumulatedHeat) {
@@ -161,6 +170,44 @@ private:
 
 };
 
+class VisitedPositionManagerPart2: public VisitedPositionManager
+{
+public:
+    void clear() override
+    {
+        for (auto& row : grid) {
+            for (auto& element : row) {
+                element.clear();
+            }
+        }
+    }
+
+    bool checkWasVisitedAndAdd(const Situation& situation) override
+    {
+        auto& element = getElement(situation);
+        auto it = std::find(element.begin(), element.end(), situation);
+        if (it == element.end()) {
+            element.push_back(situation);
+            return false;
+        }
+        if (it->accumulatedHeat <= situation.accumulatedHeat) {
+            return true;
+        }
+        *it = situation;
+        return false;
+    }
+
+private:
+
+    std::array<std::array<std::vector<Situation>, PlayGround::COLS>, PlayGround::ROWS> grid {};
+
+    std::vector<Situation>& getElement(const Situation& situation)
+    {
+        return grid[situation.currentPos.row][situation.currentPos.col];
+    }
+
+};
+
 bool situationCmp(const Situation& a, const Situation& b)
 {
     return a.heuristic() > b.heuristic();
@@ -169,16 +216,27 @@ bool situationCmp(const Situation& a, const Situation& b)
 class AStar
 {
 public:
-    AStar(const PlayGround& playGround, const Position& start, const Position& end) :
+    AStar(const PlayGround& playGround, const Position& start, const Position& end, bool _part1 = true) :
         playGround(playGround),
         start(start),
-        end(end)
+        end(end),
+        part1(_part1)
     {
-        toCheck.push_back({start, start, 0, 0, manhatanDistance(start, end)});
+        if (part1)
+        {
+            visited = std::make_unique<VisitedPositionManager>();
+        }
+        else
+        {
+            visited = std::make_unique<VisitedPositionManagerPart2>();
+        }
     }
 
     Situation findPath()
     {
+        visited->clear();
+        toCheck.clear();
+        toCheck.push_back({start, start, 0, 0, manhatanDistance(start, end)});
         while (!toCheck.empty())
         {
             const Situation situation = toCheck.back();
@@ -194,24 +252,37 @@ public:
                 {
                     continue;
                 }
+                auto prevConsecutiveStraightMoves = situation.consecutiveStraightMoves;
                 uint32 consecutiveStraightMoves;
                 if (areAligned(situation.previousPos, situation.currentPos, neighbor))
                 {
-                    consecutiveStraightMoves = 1 + situation.consecutiveStraightMoves;
-                    if (consecutiveStraightMoves > 2)
-                    {
-                        continue;
-                    }
+                    consecutiveStraightMoves = 1 + prevConsecutiveStraightMoves;
                 }
                 else
                 {
                     consecutiveStraightMoves = 0;
                 }
 
+                if (part1)
+                {
+                    if (consecutiveStraightMoves > 2)
+                        continue;
+                }
+                else
+                {
+                    if (situation.previousPos != situation.currentPos) // Special first case
+                    {
+                        if (consecutiveStraightMoves == 0 && prevConsecutiveStraightMoves < 3)
+                            continue;
+                        if (consecutiveStraightMoves > 9)
+                            continue;
+                    }
+                }
+
                 Situation newSituation {neighbor, situation.currentPos, consecutiveStraightMoves,
                     situation.accumulatedHeat + playGround[neighbor], manhatanDistance(neighbor, end)};
 
-                if (visited->checkAndAdd(newSituation))
+                if (visited->checkWasVisitedAndAdd(newSituation))
                 {
                     continue;
                 }
@@ -227,15 +298,14 @@ private:
     const PlayGround& playGround;
     const Position start;
     const Position end;
-    // Best candidates at the end
-    std::vector<Situation> toCheck;
-    std::unique_ptr<VisitedPositionManager> visited {std::make_unique<VisitedPositionManager>()};
+    bool part1;
+    std::vector<Situation> toCheck; // Best candidates at the end
+    std::unique_ptr<IVisitedPositionManager> visited;
 };
 
 
 int main() {
     std::ifstream file("input.txt");
-    // std::ifstream file("example.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
@@ -246,15 +316,13 @@ int main() {
     while (std::getline(file, line)) {
         playGround.addRow(line);
     }
-    AStar aStar(playGround, {0, 0}, {PlayGround::ROWS - 1, PlayGround::COLS - 1});
-    std::println("Finding the path...");
+    AStar aStar(playGround, {0, 0}, {PlayGround::ROWS - 1, PlayGround::COLS - 1}, true);
     Situation endSituation = aStar.findPath();
-    if (!endSituation.isValid())
-    {
-        std::println("Invalid output. Path not found");
-        return 0;
-    }
     std::println("Part 1: {}", endSituation.accumulatedHeat);
+
+    AStar aStar2(playGround, {0, 0}, {PlayGround::ROWS - 1, PlayGround::COLS - 1}, false);
+     endSituation = aStar2.findPath();
+    std::println("Part 2: {}", endSituation.accumulatedHeat);
 
     return 0;
 }
