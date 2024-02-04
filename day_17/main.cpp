@@ -189,6 +189,11 @@ public:
             }
             for (const Position& neighbor : getNeighbors(situation.currentPos))
             {
+                // It can not turn back
+                if (neighbor == situation.previousPos)
+                {
+                    continue;
+                }
                 uint32 consecutiveStraightMoves;
                 if (areAligned(situation.previousPos, situation.currentPos, neighbor))
                 {
@@ -229,7 +234,6 @@ private:
 
 
 int main() {
-    std::println("Loading file...");
     std::ifstream file("input.txt");
     // std::ifstream file("example.txt");
     if (!file) {
@@ -237,13 +241,11 @@ int main() {
         return 1;
     }
 
-    std::println("Loading playground...");
     std::string line;
     PlayGround playGround;
     while (std::getline(file, line)) {
         playGround.addRow(line);
     }
-    std::println("Playground loaded");
     AStar aStar(playGround, {0, 0}, {PlayGround::ROWS - 1, PlayGround::COLS - 1});
     std::println("Finding the path...");
     Situation endSituation = aStar.findPath();
@@ -252,8 +254,7 @@ int main() {
         std::println("Invalid output. Path not found");
         return 0;
     }
-    std::println("Path found, heat accumulated = {}", endSituation.accumulatedHeat);
-    // 677 too low
+    std::println("Part 1: {}", endSituation.accumulatedHeat);
 
     return 0;
 }
