@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <memory>
 #include <print>
 #include <fstream>
 #include <string>
@@ -40,12 +39,6 @@ struct Situation
         return accumulatedHeat + distanceToEnd;
     }
 
-    bool isValidNeighbor(const Position& neighbor) const {
-        if (consecutiveStraightMoves < 3)
-            return true;
-        return !areAligned(previousPos, currentPos, neighbor);
-    }
-
     bool operator<(const Situation& other)
     {
         return this->heuristic() < other.heuristic();
@@ -62,18 +55,16 @@ struct Situation
 class PlayGround
 {
 public:
-    static constexpr uint32 ROWS = 13;
-    static constexpr uint32 COLS = 13;
-    // static constexpr uint32 ROWS = 141;
-    // static constexpr uint32 COLS = 141;
+    // static constexpr uint32 ROWS = 13;
+    // static constexpr uint32 COLS = 13;
+    static constexpr uint32 ROWS = 141;
+    static constexpr uint32 COLS = 141;
 
     void addRow(const std::string& row) {
         for (uint32 i = 0; i < COLS; ++i) {
             auto aux = std::stoi(row.substr(i, 1));
-            std::cout << aux;
             grid[rowIdx][i] = aux;
         }
-        std::cout << std::endl;
         ++rowIdx;
     }
 
@@ -115,6 +106,66 @@ uint32 manhatanDistance(const Position& a, const Position& b)
            std::abs(static_cast<int32>(a.col) - static_cast<int32>(b.col));
 }
 
+bool ordered(const std::vector<Situation>& toCheck)
+{
+    return std::is_sorted(toCheck.begin(), toCheck.end(), [](const Situation& a, const Situation& b) {
+        return a.heuristic() > b.heuristic();
+    });
+}
+
+class VisitedPositionManager
+{
+public:
+    VisitedPositionManager()
+    {
+        for (auto& row : grid) {
+            for (auto& element : row) {
+                for (auto& dir : element) {
+                    for (auto& consecutive : dir) {
+                        consecutive = std::numeric_limits<unsigned int>::max();
+                    }
+                }
+            }
+        }
+    }
+
+    bool checkAndAdd(const Situation& situation)
+    {
+        auto& element = getElement(situation);
+        if (element <= situation.accumulatedHeat) {
+            return true;
+        }
+        element = situation.accumulatedHeat;
+        return false;
+    }
+
+private:
+
+    typedef std::array<std::array<unsigned int, 3>, 4> PossibleSituationsInPosition;
+    std::array<std::array<PossibleSituationsInPosition, PlayGround::COLS>, PlayGround::ROWS> grid {};
+
+    size_t getPrevPosIndex(const Situation& situation) const
+    {
+        if (situation.currentPos.col == situation.previousPos.col)
+        {
+            return situation.currentPos.row < situation.previousPos.row;
+        }
+        return 2 + (situation.currentPos.col < situation.previousPos.col);
+    }
+
+    unsigned int& getElement(const Situation& situation)
+    {
+        size_t prevPosIndex = getPrevPosIndex(situation);
+        return grid[situation.currentPos.row][situation.currentPos.col][prevPosIndex][situation.consecutiveStraightMoves];
+    }
+
+};
+
+bool situationCmp(const Situation& a, const Situation& b)
+{
+    return a.heuristic() > b.heuristic();
+}
+
 class AStar
 {
 public:
@@ -138,14 +189,14 @@ public:
             }
             for (const Position& neighbor : getNeighbors(situation.currentPos))
             {
-                if (!situation.isValidNeighbor(neighbor))
-                {
-                    continue;
-                }
                 uint32 consecutiveStraightMoves;
                 if (areAligned(situation.previousPos, situation.currentPos, neighbor))
                 {
                     consecutiveStraightMoves = 1 + situation.consecutiveStraightMoves;
+                    if (consecutiveStraightMoves > 2)
+                    {
+                        continue;
+                    }
                 }
                 else
                 {
@@ -154,9 +205,13 @@ public:
 
                 Situation newSituation {neighbor, situation.currentPos, consecutiveStraightMoves,
                     situation.accumulatedHeat + playGround[neighbor], manhatanDistance(neighbor, end)};
-                auto it = std::lower_bound(toCheck.begin(), toCheck.end(), newSituation, [](const Situation& a, const Situation& b) {
-                        return a.heuristic() < b.heuristic();
-                        });
+
+                if (visited->checkAndAdd(newSituation))
+                {
+                    continue;
+                }
+
+                auto it = std::lower_bound(toCheck.begin(), toCheck.end(), newSituation, situationCmp);
                 toCheck.insert(it, newSituation);
             }
         }
@@ -169,17 +224,20 @@ private:
     const Position end;
     // Best candidates at the end
     std::vector<Situation> toCheck;
+    std::unique_ptr<VisitedPositionManager> visited {std::make_unique<VisitedPositionManager>()};
 };
 
 
 int main() {
-    // std::ifstream file("input.txt");
-    std::ifstream file("example.txt");
+    std::println("Loading file...");
+    std::ifstream file("input.txt");
+    // std::ifstream file("example.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
     }
 
+    std::println("Loading playground...");
     std::string line;
     PlayGround playGround;
     while (std::getline(file, line)) {
@@ -194,7 +252,8 @@ int main() {
         std::println("Invalid output. Path not found");
         return 0;
     }
-    std::println("Path found, heat accumulated = %i", endSituation.accumulatedHeat);
+    std::println("Path found, heat accumulated = {}", endSituation.accumulatedHeat);
+    // 677 too low
 
     return 0;
 }
