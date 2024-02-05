@@ -2,6 +2,7 @@
  * This file defines some utility functions that are useful for multiple days
  */
 
+#include <algorithm>
 #include <concepts>
 #include <string>
 #include <iostream>

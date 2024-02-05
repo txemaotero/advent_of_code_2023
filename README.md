@@ -140,10 +140,10 @@ Input: Path finding.
 
 ## Day 18
 
-Input:
+Input: List of indications to dig a trench
 
-- Part 1:
-- Part 2:
+- Part 1: Find the volume of the removed terrain with small numbers
+- Part 2: Parse the hex codes to calculate with larger numbers
 
 ## Day 19
 
