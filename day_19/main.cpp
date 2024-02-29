@@ -17,14 +17,11 @@ struct Part
     uint32 m;
     uint32 a;
     uint32 s;
-    bool rejected{false};
-    bool accepted{false};
 
     uint32 points() const
     {
         return x + m + a + s;
     }
-
 
     uint32 getProp(char p) const
     {
@@ -43,6 +40,136 @@ struct Part
                 return 0;
         }
     }
+};
+
+struct Interval
+{
+    uint32 begin;
+    uint32 end;
+
+    uint32 n_elements() const
+    {
+        return end - begin;
+    }
+
+    bool contains(uint32 v) const
+    {
+        return begin <= v && v < end;
+    }
+
+    std::optional<std::pair<Interval, Interval>> split(uint32 v) const
+    {
+        if (!contains(v))
+        {
+            return {};
+        }
+        return {std::make_pair(Interval{begin, v}, Interval{v, end})};
+    }
+};
+
+struct IntervalList
+{
+    std::vector<Interval> intervals;
+
+    IntervalList():
+        intervals{
+            Interval{1, 4001}
+    }
+    {}
+
+    IntervalList(const std::vector<Interval>& ivs):
+        intervals{ivs}
+    {}
+
+    uint32 min() const
+    {
+        if (intervals.empty())
+        {
+            return 0;
+        }
+        return intervals.front().begin;
+    }
+
+    uint32 max() const
+    {
+        if (intervals.empty())
+        {
+            return 0;
+        }
+        return intervals.back().end;
+    }
+
+    std::pair<IntervalList, IntervalList> split(uint32 v)
+    {
+        if (intervals.empty())
+        {
+            return {{}, {}};
+        }
+        if (v < min())
+        {
+            return {{}, *this};
+        }
+        if (v >= max())
+        {
+            return {*this, {}};
+        }
+        std::vector<Interval> left{};
+        std::vector<Interval> right{};
+        size_t index;
+        for (index = 0; index < intervals.size(); ++index)
+        {
+            if (intervals[index].contains(v))
+            {
+                auto [l, r] = *intervals[index].split(v);
+                left.push_back(l);
+                right.push_back(r);
+                ++index;
+                break;
+            }
+            if (intervals[index].end > v)
+            {
+                break;
+            }
+            left.push_back(intervals[index]);
+        }
+        while (index < intervals.size())
+        {
+            right.push_back(intervals[index++]);
+        }
+        return {left, right};
+    }
+
+    uint32 n_elements() const
+    {
+        return ranges::accumulate(intervals | rv::transform(
+                                                  [](const Interval& i)
+                                                  {
+                                                      return i.n_elements();
+                                                  }),
+                                  0);
+    }
+
+    auto find(uint32 v) const
+    {
+        return ranges::find_if(intervals,
+                               [v](const Interval& i)
+                               {
+                                   return i.contains(v);
+                               });
+    }
+
+    bool contains(uint32 v) const
+    {
+        return find(v) != intervals.end();
+    }
+};
+
+struct PartRange
+{
+    IntervalList x{};
+    IntervalList m{};
+    IntervalList a{};
+    IntervalList s{};
 };
 
 using Workflow = std::function<std::string(const Part&)>;
