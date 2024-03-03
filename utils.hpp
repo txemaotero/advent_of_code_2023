@@ -50,6 +50,20 @@ std::vector<std::string> split(std::string s)
     return tokens;
 }
 
+std::pair<std::string, std::string> split_once(std::string s, const std::string& delimiter)
+{
+    std::pair<std::string, std::string> result;
+    size_t pos = s.find(delimiter);
+    if (pos == std::string::npos)
+    {
+        throw std::runtime_error("Delimiter not found");
+    }
+    result.first = s.substr(0, pos);
+    s.erase(0, pos + delimiter.length());
+    result.second = s;
+    return result;
+}
+
 std::string strip(std::string s)
 {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
