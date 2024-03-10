@@ -16,7 +16,7 @@
 namespace rv = ranges::views;
 namespace rg = ranges;
 
-/////////// PART 1 UTILS //////////////77
+/////////// PART 1 UTILS //////////////
 
 struct Part
 {
@@ -126,7 +126,7 @@ private:
     std::map<std::string, Workflow> mWorkflows;
 };
 
-/////////// PART 2 UTILS //////////////77
+/////////// PART 2 UTILS //////////////
 
 struct Interval
 {
@@ -233,7 +233,7 @@ struct IntervalList
                                                       return static_cast<uint64>(i.n_elements());
                                                   }),
                                   0,
-                                  std::multiplies{});
+                                  std::plus{});
     }
 
     auto find(uint32 v) const
@@ -257,6 +257,36 @@ struct PartRange
     IntervalList m{};
     IntervalList a{};
     IntervalList s{};
+
+    std::pair<PartRange, PartRange> split(char prop, uint32 splitVal) const
+    {
+        if (prop == 'x')
+        {
+            auto [left, right] = x.split(splitVal);
+            return std::make_pair(PartRange{left, m, a, s}, PartRange{right, m, a, s});
+        }
+        if (prop == 'm')
+        {
+            auto [left, right] = m.split(splitVal);
+            return std::make_pair(PartRange{x, left, a, s}, PartRange{x, right, a, s});
+        }
+        if (prop == 'a')
+        {
+            auto [left, right] = a.split(splitVal);
+            return std::make_pair(PartRange{x, m, left, s}, PartRange{x, m, right, s});
+        }
+        if (prop == 's')
+        {
+            auto [left, right] = s.split(splitVal);
+            return std::make_pair(PartRange{x, m, a, left}, PartRange{x, m, a, right});
+        }
+        assert(false);
+    }
+
+    uint64 n_elements() const
+    {
+        return x.n_elements() * m.n_elements() * a.n_elements() * s.n_elements();
+    }
 };
 
 // Workflows as trees
@@ -280,22 +310,23 @@ struct overload: Ts...
     using Ts::operator()...;
 };
 
-uint64 countSuccess(const Tree& tree, const IntervalList& intervals)
+uint64 countSuccess(const Tree& tree, const PartRange& partRange)
 {
     return std::visit(
         overload{
-            [&intervals](const Leaf& leaf) -> uint64
+            [&partRange](const Leaf& leaf) -> uint64
             {
                 if (leaf.accepted)
                 {
-                    return intervals.n_elements();
+                    return partRange.n_elements();
                 }
                 return 0;
             },
-            [&intervals](const std::unique_ptr<Node>& node) -> uint64
+            [&partRange](const std::unique_ptr<Node>& node) -> uint64
             {
-                auto [left, right] = intervals.split(node->mSplitVal);
-                return countSuccess(node->mLessThan, left) + countSuccess(node->mGreaterThan, right);
+                auto [left, right] = partRange.split(node->mProp, node->mSplitVal);
+                return countSuccess(node->mLessThan, left) +
+                       countSuccess(node->mGreaterThan, right);
             },
         },
         tree);
@@ -304,7 +335,6 @@ uint64 countSuccess(const Tree& tree, const IntervalList& intervals)
 class TreeHolder
 {
 public:
-
     void addInstruction(const std::string& line)
     {
         auto split_line = split(line, "{");
@@ -321,9 +351,8 @@ public:
 
     uint64 part2() const
     {
-        return countSuccess(mTree, IntervalList());
+        return countSuccess(mTree, PartRange{});
     }
-
 
 private:
     Tree mTree;
@@ -366,14 +395,20 @@ private:
                 auto [propStr, compareValue] = split_once(condition, "<");
                 uint32 midVal = static_cast<uint32>(std::stoi(compareValue));
                 assert(propStr.size() == 1);
-                return std::unique_ptr<Node>(new Node{buildTreeInternal(destinyLabel), buildTreeFromInstruction(restInstruction), midVal, propStr[0]});
+                return std::unique_ptr<Node>(new Node{buildTreeInternal(destinyLabel),
+                                                      buildTreeFromInstruction(restInstruction),
+                                                      midVal,
+                                                      propStr[0]});
             }
             else if (condition.contains('>'))
             {
                 auto [propStr, compareValue] = split_once(condition, ">");
-                uint32 midVal = static_cast<uint32>(std::stoi(compareValue));
+                uint32 midVal = static_cast<uint32>(std::stoi(compareValue)) + 1;
                 assert(propStr.size() == 1);
-                return std::unique_ptr<Node>(new Node{buildTreeFromInstruction(restInstruction), buildTreeInternal(destinyLabel), midVal, propStr[0]});
+                return std::unique_ptr<Node>(new Node{buildTreeFromInstruction(restInstruction),
+                                                      buildTreeInternal(destinyLabel),
+                                                      midVal,
+                                                      propStr[0]});
             }
             else
             {
@@ -385,9 +420,7 @@ private:
 
 int main()
 {
-    // std::ifstream file("input.txt");
-    // std::ifstream file("example.txt");
-    std::ifstream file("/home/txema/repos/advent_of_code_2023/day_19/example.txt");
+    std::ifstream file("input.txt");
     if (!file)
     {
         std::cerr << "Error opening file\n";
