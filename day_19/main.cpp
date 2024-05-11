@@ -3,7 +3,6 @@
  * valor que sirve para saber dado un input si se tiene que ir a la rama de menores o de mayores.
  */
 #include "../utils.hpp"
-
 #include <range/v3/all.hpp>
 
 #include <fstream>
