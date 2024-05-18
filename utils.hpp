@@ -3,7 +3,9 @@
  */
 
 #include <algorithm>
+#include <cassert>
 #include <concepts>
+#include <numeric>
 #include <string>
 #include <iostream>
 #include <ranges>
@@ -90,6 +92,18 @@ void print(const Container& container) {
     std::cout << ']' << std::endl;
 }
 
+template<std::ranges::range Container>
+std::optional<size_t> indexOf(const Container& container, const typename Container::value_type& element) {
+    if (auto it = std::ranges::find(container, element); it == std::end(container))
+    {
+        return {};
+    }
+    else
+    {
+        return std::distance(std::begin(container), it);
+    }
+}
+
 template<typename T, typename F>
 concept Comparator = requires(F f, const T& a, const T& b) {
     { f(a, b) } -> std::convertible_to<bool>;
@@ -149,3 +163,81 @@ private:
     std::vector<T> data;
     F comparator;
 };
+
+class CyclicProcess
+{
+public:
+    bool addOccurrence(uint64 step)
+    {
+        occurrences.push_back(step);
+        return isCyclic();
+    }
+
+    bool isCyclic() const
+    {
+        auto s = occurrences.size();
+        auto period1 = occurrences[s - 1] - occurrences[s - 2];
+        auto period2 = occurrences[s - 2] - occurrences[s - 3];
+        return s > 1 && period1 == period2;
+    }
+
+    std::optional<uint64> getPeriod() const
+    {
+        if (!isCyclic())
+        {
+            return std::nullopt;
+        }
+        auto s = occurrences.size();
+        return occurrences[s - 1] - occurrences[s - 2];
+    }
+
+    const std::vector<uint64>& getOccurrences() const
+    {
+        return occurrences;
+    }
+
+private:
+    std::vector<uint64> occurrences {};
+};
+
+class ComposedCyclicProcess
+{
+public:
+    ComposedCyclicProcess(size_t nProccess) : cycles(nProccess) {}
+
+    bool addOccurrence(size_t processId, uint64 step)
+    {
+        assert(processId < cycles.size());
+        cycles[processId].addOccurrence(step);
+        return allHaveCycles();
+    }
+
+    bool allHaveCycles() const
+    {
+        return std::ranges::all_of(cycles, &CyclicProcess::isCyclic);
+    }
+
+    std::optional<uint64> getPeriod() const
+    {
+        if (!allHaveCycles())
+        {
+            return std::nullopt;
+        }
+        const auto& periods = cycles | std::views::transform(
+                                           [](const auto& c) -> uint64
+                                           {
+                                               auto p = c.getPeriod();
+                                               return p ? *p : 0;
+                                           });
+        return std::ranges::fold_left(periods,
+                                      1u,
+                                      [](uint64 acc, uint64 p)
+                                      {
+                                          return std::lcm(acc, p);
+                                      });
+    }
+
+private:
+    std::vector<CyclicProcess> cycles;
+};
+

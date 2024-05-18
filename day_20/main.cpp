@@ -1,16 +1,17 @@
 #include "../utils.hpp"
 
+#include <array>
 #include <deque>
 #include <fstream>
 #include <iostream>
-#include <memory>
+#include <print>
 #include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
 
-
 using signal_t = bool;
+using namespace std::literals;
 
 class Broadcaster;
 class FlipFlop;
@@ -88,6 +89,8 @@ struct Instruction
 
 class ButtonPressEvent
 {
+    static constexpr std::array parse = {"jg"sv, "rh"sv, "jm"sv, "hf"sv};
+
 public:
     ButtonPressEvent(std::unordered_map<std::string, ModuleType>&& _modules):
         modules(std::move(_modules))
@@ -95,17 +98,22 @@ public:
 
     bool press()
     {
-        bool lowPulseToRx = false;
+        static uint64 nPresses = 0;
         instructions = {
             {"", false, Broadcaster::name}
         };
 
         while (!instructions.empty())
         {
-            // std::cout << "Processing Instruction\n";
             auto [origin, pulse, dest] = std::move(instructions.front());
+            if (dest == "mg" && pulse)
+            {
+                if (part2Cycles.addOccurrence(*indexOf(parse, origin), nPresses))
+                {
+                    return true;
+                }
+            }
             instructions.pop_front();
-            // std::cout << "pulse count: " << pulsesCount[0] << ", " << pulsesCount[1] << "\n";
             ++pulsesCount[pulse];
             auto it = modules.find(std::string(dest));
             if (it == modules.end())
@@ -132,19 +140,11 @@ public:
                 destModule);
             for (const auto& newDest: newDests)
             {
-                // std::cout << "Adding Instruction\n";
                 instructions.push_back({dest, out, newDest});
-                if (newDest == "rx" && !out)
-                {
-                    lowPulseToRx = true;
-                }
-                // if (newDest == "mg" && out)
-                // {
-                //     std::cout << "Aqui desde " << dest << "\n";
-                // }
             }
         }
-        return lowPulseToRx;
+        ++nPresses;
+        return false;
     }
 
     uint64 getCurrentResult() const
@@ -179,10 +179,16 @@ public:
             it->second);
     }
 
+    auto getPeriod()
+    {
+        return part2Cycles.getPeriod();
+    }
+
 private:
     std::unordered_map<std::string, ModuleType> modules;
     std::deque<Instruction> instructions;
     std::array<uint64, 2> pulsesCount {0u, 0u};
+    ComposedCyclicProcess part2Cycles{4};
 };
 
 
@@ -201,27 +207,10 @@ std::pair<std::string, ModuleType> moduleFactory(const std::string& definition)
     return {std::string(Broadcaster::name), Broadcaster()};
 }
 
-template<class... Ts>
-struct overloaded : Ts... { using Ts::operator()...; };
-
-std::string toStr(const std::vector<bool>& v)
-{
-    if (v.empty())
-    {
-        return "";
-    }
-    std::string result = std::to_string(static_cast<int>(v[0]));
-    for (int i = 1; i < v.size(); ++i)
-    {
-        result += " " + std::to_string(static_cast<int>(v[0]));
-    }
-    return result;
-}
 
 int main()
 {
     std::ifstream file("input.txt");
-    // std::ifstream file("example2.txt");
     if (!file)
     {
         std::cerr << "Error opening file\n";
@@ -237,10 +226,7 @@ int main()
         auto [name, module] = moduleFactory(def);
         modules[name] = module;
         connections[name] = split(cons, ", ");
-        // std::cout << "Module: " << name <<" -> " << "cons: " << connections[name].size() << "\n";
     }
-    // std::cout << modules.size() << " modules\n";
-    // std::cout << connections.size() << " connections\n";
     for (const auto& [name, targets]: connections)
     {
         auto& refMod = modules[name];
@@ -266,22 +252,20 @@ int main()
     }
 
     ButtonPressEvent game(std::move(modules));
-    bool endPart2 = false;
-    std::vector<bool> mgState;
-    for (uint64 n = 0; n < 1000 || !endPart2; ++n)
+    uint64 gameTurn = 0;
+    while (true)
     {
-        endPart2 = game.press();
-        if (endPart2)
+        if (game.press())
         {
-            std::cout << "Part 2: " << n + 1 << "\n";
+            std::println("Part 2: {}", *game.getPeriod());
+            break;
         }
-        if (auto newState = game.getMGState(); mgState != newState)
+
+        if (++gameTurn == 1000)
         {
-            std::cout << "New state " << toStr(newState) << " at n = " << n << "\n";
-            mgState = newState;
+            std::println("Part 1: {}", game.getCurrentResult());
         }
     }
-    std::cout << "Part 1: " << game.getCurrentResult() << "\n";
 
     return 0;
 }
