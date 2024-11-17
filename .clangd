@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [-std=c++23, -stdlib=libc++, -ferror-limit=0]
+  Add: [-std=c++23, -stdlib=libstdc++, -ferror-limit=0]

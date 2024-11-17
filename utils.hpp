@@ -66,6 +66,24 @@ std::pair<std::string, std::string> split_once(std::string s, const std::string&
     return result;
 }
 
+template<typename T>
+std::string join(const std::vector<T>& s, const std::string& delimiter)
+{
+    if (s.empty())
+    {
+        return {};
+    }
+    std::string result {std::to_string(s[0])};
+    return std::transform_reduce(begin(s) + 1,
+                                 end(s),
+                                 result,
+                                 std::plus{},
+                                 [&delimiter](const T& e)
+                                 {
+                                     return delimiter + std::to_string(e);
+                                 });
+}
+
 std::string strip(std::string s)
 {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
