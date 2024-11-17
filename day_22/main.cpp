@@ -1,5 +1,6 @@
 #include <format>
 #include <fstream>
+#include <functional>
 #include <ranges>
 #include <set>
 #include <string>
@@ -161,6 +162,45 @@ public:
             });
     }
 
+    size_t howManyAreRemovedIfDesintegrate(const size_t i) const
+    {
+        std::vector<size_t> toBeRemoved{i};
+        size_t result{0};
+        auto connectionsCopy{connections};
+        while (!toBeRemoved.empty())
+        {
+            auto removing = toBeRemoved.back();
+            toBeRemoved.pop_back();
+            std::ranges::for_each(std::ranges::enumerate_view(connectionsCopy),
+                                  [&result, &toBeRemoved, removing](auto iConn)
+                                  {
+                                      auto& [i, conn] = iConn;
+                                      const auto it = std::ranges::find(conn, removing);
+                                      if (it != std::end(conn))
+                                      {
+                                          conn.erase(it);
+                                          if (conn.empty())
+                                          {
+                                              ++result;
+                                              toBeRemoved.push_back(i);
+                                          }
+                                      }
+                                  });
+        }
+        return result;
+    }
+
+    size_t part2() const
+    {
+        return std::ranges::fold_left(
+            std::ranges::iota_view{ 0u, connections.size() } |
+                std::views::transform(std::bind(&PlacedBricks::howManyAreRemovedIfDesintegrate,
+                                                *this,
+                                                std::placeholders::_1)),
+            0,
+            std::plus{});
+    }
+
 private:
     std::vector<Brick> placedBricks;
     std::vector<Connects> connections;
@@ -169,7 +209,6 @@ private:
 
 int main() {
     std::ifstream file("input.txt");
-    // std::ifstream file("example.txt");
     if (!file) {
         std::cerr << "Error opening file\n";
         return 1;
@@ -187,10 +226,8 @@ int main() {
     while (auto b = bricks.popLower())
         placedBricks.insert(std::move(*b));
 
-    // 118 too low
-    // 1359 too high
-    // placedBricks.printStatus();
-    std::cout << std::format("Part 1: {}", placedBricks.howManyCanBeRemoved());
+    std::cout << std::format("Part 1: {}\n", placedBricks.howManyCanBeRemoved());
+    std::cout << std::format("Part 2: {}\n", placedBricks.part2());
 
     return 0;
 }
