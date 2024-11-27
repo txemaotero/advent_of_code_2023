@@ -18,8 +18,7 @@ using Vec2df = std::array<myF_t, 2>;
 template<typename T>
 concept Vec = std::is_same_v<T, Vec2d> || std::is_same_v<T, Vec2df>;
 
-template<Vec T>
-auto dot(const T& v1, const T& v2)
+auto dot(const auto& v1, const auto& v2)
 {
     return std::inner_product(begin(v1), end(v1), begin(v2), 0);
 }
@@ -100,7 +99,8 @@ struct Box
     }
 };
 
-int main() {
+int main()
+{
     // NOTE: Compile with g++
     std::ifstream file("input.txt");
     const int_t MIN = 200000000000000;
@@ -108,7 +108,8 @@ int main() {
     // std::ifstream file("example.txt");
     // const int_t MIN = 7;
     // const int_t MAX = 27;
-    if (!file) {
+    if (!file)
+    {
         std::cerr << "Error opening file\n";
         return 1;
     }
@@ -125,7 +126,7 @@ int main() {
         lines.push_back({pos, vel});
     }
 
-    const Box box {MIN, MAX};
+    const Box box{MIN, MAX};
     unsigned part1result{0};
     for (auto i = 0; i < lines.size() - 1; ++i)
     {
