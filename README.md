@@ -1,8 +1,27 @@
 # Advent of code 2023
 
+**Finished!!**
+
+[final snapshot](./final_snapshot.png)
+
 My solution for the AOC 2023 puzzles. This year I have decide to implement my
 solutions in C++ using the 23 standard so I can get familiarized with the string
 processing and modern range-based utilities.
+
+## Conclusions
+
+After solving all the problems in C++23 I want to summarize the main conclusions
+about the current state of this standard:
+- Overall, it seems an incomplete product
+- I wasn't able to use modules. There isn't much documentation or examples using
+  them.
+- Ranges has lights and shadows. Of course they are a huge addition to the
+  lenguaje but when you try to use them in a way iterators are used in rust for
+  instance, you can easily fall into situations where you need tools that are
+  ton available. For example, collecting results in new containers.
+- C++23 tries to provide some of this missing tools but the support from main
+  compilers is very inconsistent. You have to change the compiler of the
+  implementation of the standard library to get a certain feature.
 
 ## Day 1
 
@@ -147,50 +166,59 @@ Input: List of indications to dig a trench
 
 ## Day 19
 
-Input:
+Input: Each line of the input is a pipeline processing an input.
 
-- Part 1:
-- Part 2:
+- Part 1: Count success and rejected
+- Part 2: Calculate all combinations
 
 ## Day 20
 
-Input:
+Input: Signal processing. Each line tells how each node modifies an input
+signal. Nodes are connected forming trees.
 
-- Part 1:
-- Part 2:
+- Part 1: Count low and high pulses after one button press
+- Part 2: Minimum number press to deliver a low pulse. Trick, look at how the
+  nodes are connected and realize there are 4 sub-trees.
 
 ## Day 21
 
-Input:
+Input: A maze with rocks and garden. Simulate propagation across the maze
 
-- Part 1:
-- Part 2:
+- Part 1: How many occupied after 64 steps
+- Part 2: How many after a huge number of steps? Trick: the number is a multiple
+  of the maze size. Moreover the maze has a simmetry.
 
 ## Day 22
 
-Input:
+Input: Like a tetris in 3d
 
-- Part 1:
-- Part 2:
+- Part 1: Calculate how many pieces can be removed without collapsing other
+  pieces
+- Part 2: Calculate the chain reaction for each pieces
 
 ## Day 23
 
-Input:
+Input: Longest path finding
 
-- Part 1:
-- Part 2:
+- Part 1: Follow arrows
+- Part 2: Arrows are normal tiles
 
 ## Day 24
 
-Input:
+Input: Particle trajectories
 
-- Part 1:
-- Part 2:
+- Part 1: How many overlap in xy projection inside a given square. Problem, the
+  numbers are very large and cause overflow. Trick: Use float128 form c++23
+- Part 2: Calculate the trajectory that impacts all the others. Trick, solve the
+  sistem of equations. Problem, it is not a linear system and to find the
+  solution there are overflows. Solution: Solve the system symbolically with sympy
+  and evaluate.
 
 ## Day 25
 
-Input:
+Input: A graph
 
-- Part 1:
-- Part 2:
+- Part 1: What 3 edges we need to remove to get 2 clusters. Find the sizes of
+  the resulting subgraphs. Solution: Apply the Stoer–Wagner minimum cut
+  algorithm
 
