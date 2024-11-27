@@ -2,7 +2,7 @@
 
 **Finished!!**
 
-[final snapshot](./final_snapshot.png)
+![final snapshot](./final_snapshot.png)
 
 My solution for the AOC 2023 puzzles. This year I have decide to implement my
 solutions in C++ using the 23 standard so I can get familiarized with the string
